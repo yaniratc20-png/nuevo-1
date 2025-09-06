@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte Diario de Horas Extras</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 95%;
+      max-width: 900px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 25px;
+      font-size: 26px;
+      color: #333;
+    }
+    .encabezado {
+      border: 2px solid #28a745;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      background: #f9fff9;
+    }
+    .trabajador {
+      border: 2px solid #007BFF;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      background: #f9fcff;
+      position: relative;
+    }
+    .trabajador-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .trabajador-header h3 {
+      margin: 0;
+      color: #007BFF;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin: 8px 0 5px;
+      font-size: 18px;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    input[readonly] {
+      background: #eee;
+    }
+    button {
+      display: inline-block;
+      background: #007BFF;
+      color: #fff;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .add-btn {
+      background: #28a745;
+    }
+    .add-btn:hover {
+      background: #1e7e34;
+    }
+    .delete-btn {
+      background: #dc3545;
+      padding: 8px 15px;
+      font-size: 14px;
+      margin: 0;
+    }
+    .delete-btn:hover {
+      background: #a71d2a;
+    }
+    .horas-container {
+      display: flex;
+      gap: 10px;
+    }
+    .horas-container input {
+      flex: 1;
+    }
+    .clear-all-btn {
+      background: #ffc107;
+      color: #000;
+      margin-left: 10px;
+    }
+    .clear-all-btn:hover {
+      background: #e0a800;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 600px) {
+      h2 { font-size: 22px; }
+      label, input, textarea, select, button { font-size: 16px; }
+      .horas-container { flex-direction: column; }
+      .trabajador-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .button-group { flex-direction: column; width: 100%; }
+      .button-group button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Reporte Diario de Horas Extras</h2>
+    <form id="reporteForm">
+      
+      <div class="encabezado">
+        <label>Fecha del Reporte:</label>
+        <input type="date" name="fecha_reporte" required>
+        <label>Jefe Responsable:</label>
+        <input type="text" name="jefe_responsable" required>
+      </div>
+      
+      <div id="trabajadoresContainer"></div>
+
+      <div class="button-group">
+        <button type="button" class="add-btn" onclick="agregarTrabajador()">+ Agregar Trabajador</button>
+        <button type="button" class="clear-all-btn" onclick="eliminarTodosLosTrabajadores()">🗑️ Eliminar Todas las Hojas</button>
+      </div>
+      <br>
+      <button type="submit">Enviar Reporte</button>
+    </form>
+  </div>
+
+  <script>
+    let contador = 0;
+    let trabajadoresData = [];
+
+    // ✅ Tu URL final de Google Apps Script
+    const apiURL = "https://script.google.com/macros/s/AKfycbzLPWN56SnkRWlRS6U8HDPFDqgZH5ursRYSb41uVCG0UPKxp0QqwlsTCjh9PvkBlqRCPw/exec";
+
+    // Cargar lista de trabajadores
+    fetch(apiURL)
+      .then(res => res.json())
+      .then(data => {
+        trabajadoresData = data;
+        actualizarSelects();
+      })
+      .catch(err => console.error("Error cargando trabajadores:", err));
+
+    function actualizarSelects() {
+      document.querySelectorAll("select.trabajador-select").forEach(select => {
+        if (select.options.length <= 1) {
+          trabajadoresData.forEach(obj => {
+            const opt = document.createElement("option");
+            opt.value = obj.nombre;
+            opt.textContent = obj.nombre;
+            select.appendChild(opt);
+          });
+        }
+      });
+    }
+
+    function agregarTrabajador() {
+      contador++;
+      const wrapper = document.getElementById("trabajadoresContainer");
+      const div = document.createElement("div");
+      div.className = "trabajador";
+      div.id = "trabajador_" + contador;
+      div.innerHTML = `
+        <div class="trabajador-header">
+          <h3>Trabajador ${contador}</h3>
+          <button type="button" class="delete-btn" onclick="borrarTrabajador(${contador})" title="Eliminar este trabajador">
+            ✕ Eliminar
+          </button>
+        </div>
+        <label>Nombre del Trabajador:</label>
+        <select name="nombre_${contador}" id="nombre_${contador}" class="trabajador-select" required onchange="llenarDNI(${contador})">
+          <option value="">Seleccione...</option>
+        </select>
+        <label>DNI:</label>
+        <input type="text" name="dni_${contador}" id="dni_${contador}" readonly>
+        <label>Hora de Inicio:</label>
+        <input type="time" name="hora_inicio_${contador}" required>
+        <label>Hora de Fin:</label>
+        <input type="time" name="hora_fin_${contador}" required>
+        <label>Horas Extras:</label>
+        <div class="horas-container">
+          <input type="number" name="horas_${contador}" min="0" placeholder="Horas" required>
+          <input type="number" name="minutos_${contador}" min="0" max="59" placeholder="Minutos" required>
+        </div>
+        <label>Lugar:</label>
+        <input type="text" name="lugar_${contador}" required>
+        <label>Trabajo Realizado:</label>
+        <textarea name="trabajo_realizado_${contador}" rows="3"></textarea>
+      `;
+      wrapper.appendChild(div);
+      actualizarSelects();
+    }
+
+    function borrarTrabajador(i) {
+      if (confirm('¿Está seguro de que desea eliminar este trabajador?')) {
+        const elemento = document.getElementById("trabajador_" + i);
+        if (elemento) {
+          elemento.remove();
+          renumerarTrabajadores();
+        }
+      }
+    }
+
+    function eliminarTodosLosTrabajadores() {
+      if (confirm('¿Está seguro de que desea eliminar todas las hojas de trabajadores? Esta acción no se puede deshacer.')) {
+        document.getElementById("trabajadoresContainer").innerHTML = "";
+        contador = 0;
+        agregarTrabajador();
+      }
+    }
+
+    function renumerarTrabajadores() {
+      const trabajadores = document.querySelectorAll('.trabajador');
+      trabajadores.forEach((trabajador, index) => {
+        const nuevoNumero = index + 1;
+        const h3 = trabajador.querySelector('h3');
+        if (h3) {
+          h3.textContent = `Trabajador ${nuevoNumero}`;
+        }
+      });
+    }
+
+    function llenarDNI(i) {
+      const nombre = document.getElementById(`nombre_${i}`).value;
+      const trabajador = trabajadoresData.find(t => t.nombre === nombre);
+      document.getElementById(`dni_${i}`).value = trabajador ? trabajador.dni : "";
+    }
+
+    window.onload = agregarTrabajador;
+
+    document.getElementById("reporteForm").addEventListener("submit", async function(e) {
+      e.preventDefault();
+      
+      const trabajadoresExistentes = document.querySelectorAll('.trabajador');
+      if (trabajadoresExistentes.length === 0) {
+        alert('Debe agregar al menos un trabajador antes de enviar el reporte.');
+        return;
+      }
+      
+      const fd = new FormData(this);
+      const payload = {
+        fecha_reporte: fd.get("fecha_reporte"),
+        jefe_responsable: fd.get("jefe_responsable"),
+        trabajadores: []
+      };
+      
+      for (let i = 1; i <= contador; i++) {
+        if (document.getElementById(`trabajador_${i}`)) {
+          if (fd.get(`nombre_${i}`)) {
+            payload.trabajadores.push({
+              nombre: fd.get(`nombre_${i}`),
+              dni: fd.get(`dni_${i}`),
+              hora_inicio: fd.get(`hora_inicio_${i}`),
+              hora_fin: fd.get(`hora_fin_${i}`),
+              horas: fd.get(`horas_${i}`) || 0,
+              minutos: fd.get(`minutos_${i}`) || 0,
+              lugar: fd.get(`lugar_${i}`),
+              trabajo_realizado: fd.get(`trabajo_realizado_${i}`)
+            });
+          }
+        }
+      }
+      
+      if (payload.trabajadores.length === 0) {
+        alert('Debe completar la información de al menos un trabajador.');
+        return;
+      }
+      
+      try {
+        const res = await fetch(apiURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const resp = await res.json();
+        alert(resp.message);
+        if (resp.success) {
+          this.reset();
+          document.getElementById("trabajadoresContainer").innerHTML = "";
+          contador = 0;
+          agregarTrabajador();
+        }
+      } catch(err) {
+        alert("Error al enviar: " + err);
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
